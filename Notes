@@ -1,0 +1,45 @@
+#Author Vinit:
+#purpose: Scartch pad for Learning and remembering details/Questions
+
+1. In Init, char device registrations need to be done from where we get Major Minor Numbers
+	Using those major minor number we need to do cdev_init and add for cdev struct initilization & device registraion with kernel
+
+2. Kernel uses Major number to indentify which device driver need to invoke when operation done on dev node (/dev/my_device*) and in open call based on minor number you categorized what action to be performed in your "open" call. 
+	struct file --> get allocated and created by VFS (virtual file system) i.e. kernel on every open action file-->private_data can be used for leading read/write calls, (void *) data type
+	struct inode --> created and handled by kernel
+
+3. to copy data from kernel to user or viceversa always use __copy_to_user ot __copy__from_user, because when process makes system call on driver node, process is executing driver code (kernel mode) in process context. so the address passed by user code if it's invalid then seg fault will happen and process will die. But legal address but invalid location will be get written so need to be careful and never access user process passed directly in kernel context.
+
+	in process context but kernel mode in unmapped memory de-referenced then kernel panic will happen because it is kernel page fault now
+
+
+
+
+
+
+### Setting Env for driver compilation
+
+
+------------- Method 1 using git repo and setting cross compilaton --------------
+
+1. synced linux kernel repo from R-pi open source repository
+2. run below commands to setup kernel headers & do module compilation once
+	cd ~/rpi-linux
+	make bcm2709-defconfig  # choose correct defconfig based on your model
+	make modules_prepare
+        make modules -j4
+
+Note: 
+1. Make file compilation invokes mentioned kernel dir $KDIR Makefile, & M option tells where the custom/your driver resides which needs to be compiled
+	--> User driver Make file invokes, Kernel Top Makefile (from $KDIR) which sets flag, env, symbols, include path & then sees M option and interpreate it as external modules to be built are in this directory.
+
+in corss compilation we might ned to re configure compiler and ARCH
+
+----------------------------------------------------------------------------------
+
+----------- Method 2 (If you are compiling on same R-pi system where you are loading driver ----------
+1. sudo apt install linux-headers-$(uname -r)    --> Install Linux headers of the kernel
+2. set KDIR to /lib/modules/$(shell uname -r)/build  --> In your driver make file
+
+Question:
+1. from where/when the kernel inode structure get's initilized
