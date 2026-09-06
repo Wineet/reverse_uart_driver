@@ -4,7 +4,14 @@
 #include<linux/fs.h>
 #include<linux/cdev.h>
 #include<linux/device.h>
+#include<asm/uaccess.h>
+#include<linux/uaccess.h>
 
+/* ioctl commands  'x' was ununsed magic number ioctl-number.rst
+ *  */
+
+#define R_UART_BAUD_SET _IOW('x',1,unsigned int)
+#define R_UART_BAUD_GET _IOR('x',2,unsigned int)
 
 MODULE_LICENSE("GPL");
 static dev_t dev;
@@ -13,6 +20,7 @@ static struct class *cls;
 struct _r_uart_drv{
 	unsigned int major;
 	unsigned int minor;
+	unsigned int baud_rate;
 }; 
 #define MAX_DEVICES 4
 #define MAX_BUFFER_SIZE 25
@@ -80,12 +88,41 @@ static ssize_t reverse_uart_read(struct file *file, char __user *buf, size_t siz
 }
 static int reverse_uart_release(struct inode *inode,struct file *file){
 
-	printk("R_UART %s  ",__func__);
+	printk("R_UART %s  \n",__func__);
 	kfree(file->private_data);
 	return 0;
 }
+
 static long reverse_uart_ioctl (struct file *file,unsigned int cmd, unsigned long arg)
 {
+/* for debug only*/
+	struct _r_uart_drv *drv = file->private_data;
+	printk("ioctl minor %u \n",drv->minor);
+
+	switch(cmd)
+	{
+		case R_UART_BAUD_SET:
+			if(copy_from_user(&drv->baud_rate,(unsigned int __user *)arg,sizeof(drv->baud_rate)))
+			{
+				return -EFAULT;
+			}
+			printk("R_UART_BAUD_SET %u\n",drv->baud_rate);
+			break;
+
+		case R_UART_BAUD_GET:
+			if(!access_ok((void __user *)arg,_IOC_SIZE(cmd)))
+			{
+				return -EFAULT;
+			}
+			if(put_user(drv->baud_rate,(unsigned int __user *)arg))
+			{
+				return -EFAULT;
+			}
+			printk("R_UART_BAUD_GET %u\n",drv->baud_rate);
+			break;
+		default:
+			return -ENOTTY;
+	}
 	return 0;
 }
 static struct file_operations fops = {
